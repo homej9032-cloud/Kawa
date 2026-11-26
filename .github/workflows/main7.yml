@@ -1,0 +1,57 @@
+
+name: Build JARVIS APK
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Unpack the project
+        shell: bash
+        run: |
+          mkdir -p proj
+
+          if [ -f jarvis-android-project.zip ]; then
+            unzip -o -q jarvis-android-project.zip -d proj
+          else
+            shopt -s dotglob nullglob
+            for item in *; do
+              if [[ "$item" == "proj" || "$item" == ".git" ]]; then
+                continue
+              fi
+              cp -r "$item" proj/
+            done
+          fi
+
+      - name: Accept Android licenses
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Build the APK
+        working-directory: proj
+        run: gradle assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: jarvis-apk
+          path: proj/app/build/outputs/apk/debug/app-debug.apk
+
+          
